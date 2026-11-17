@@ -1,0 +1,38 @@
+[Unit]
+Description=BGSIM multiplayer relay
+Documentation=https://github.com/your-org/bgsim
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 中继和游戏客户端是两个独立产物，放在 /opt 下用普通用户跑
+User=bgsim
+Group=bgsim
+WorkingDirectory=/opt/bgsim-relay
+ExecStart=/usr/bin/node /opt/bgsim-relay/relay.mjs
+Restart=always
+RestartSec=3
+# 前面用 Caddy/nginx 做 TLS，这里只听回环
+Environment=HOST=127.0.0.1
+Environment=PORT=8790
+Environment=NEED=8
+Environment=MAX_TURNS=60
+Environment=LOG_LEVEL=info
+# Environment=RELAY_TOKEN=change-me
+
+# 加固：它只需要网络，不需要写盘
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+MemoryMax=256M
+
+[Install]
+WantedBy=multi-user.target

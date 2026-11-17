@@ -1,0 +1,28 @@
+BGSIM — 酒馆战棋模拟器
+Copyright (c) 2026 BGSIM contributors
+
+本项目的原创代码（React 前端、Python 桥、脚本与样式）以 MIT 许可发布（见 LICENSE）。
+
+第三方组件
+----------
+1. taverngym
+   来自 AutoTavern 项目：https://github.com/MCG-NJU/AutoTavern
+   以 Rust 编写的酒馆战棋引擎，按上游项目许可使用。卡牌数据与规则实现版权归上游作者所有。
+   源码仓库不附带它的二进制（engine/runtime 不入库），运行方式见 README「引擎运行时」。
+
+2. Python 运行时与 numpy（使用自备的 engine/runtime 时）
+   Python Software Foundation License；numpy 为 BSD 许可。
+
+3. 卡框、星级盾徽、种族图标（public/img）
+   取自 HearthstoneBattlegroundTracker 的 card-browser 分支（HBTCards-Web），
+   由 BattlegroundDB 数据生成。
+
+4. 卡牌插画、英雄头像与整卡渲染图
+   通过 art.hearthstonejson.com 与社区 CDN 按需加载。
+   《炉石传说》相关图像、名称与文本版权归 Blizzard Entertainment 所有。
+   本项目为非官方粉丝作品，与 Blizzard Entertainment 无隶属关系。
+
+5. 字体 Chunkfive（public/fonts/Chunkfive.otf）
+   以其原始许可（SIL Open Font License）使用。
+
+使用本项目即表示你理解：所有卡牌素材仅应在你拥有相应使用权的范围内使用。

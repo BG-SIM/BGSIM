@@ -1,0 +1,41 @@
+{
+  "name": "bgsim",
+  "private": true,
+  "license": "MIT",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A playable, high-fidelity Hearthstone Battlegrounds simulator (React UI + taverngym engine)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "server": "node scripts/server.mjs",
+    "relay": "node server/relay.mjs",
+    "relay:install": "npm --prefix server install --omit=dev",
+    "start": "node scripts/start.mjs",
+    "test:lockstep": "node scripts/lockstep-test.mjs",
+    "test:profiles": "node scripts/profile-test.mjs",
+    "test:profiles:ui": "node scripts/profile-ui-test.mjs",
+    "test:relay": "node scripts/relay-test.mjs",
+    "test:net": "node scripts/lockstep-test.mjs && node scripts/engine-slots-test.mjs && node scripts/relay-test.mjs && node scripts/net-e2e.mjs --humans 8 && node scripts/net-ui-test.mjs",
+    "desktop": "tauri build",
+    "desktop:dev": "tauri dev"
+  },
+  "dependencies": {
+    "framer-motion": "^11.15.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.8",
+    "@tauri-apps/cli": "^2.12.4",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
+    "playwright-core": "^1.65.0",
+    "tailwindcss": "^4.1.8",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}

@@ -1,0 +1,29 @@
+node_modules/
+dist/
+data/
+_probe/
+*.log
+.DS_Store
+Thumbs.db
+tsconfig.tsbuildinfo
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/
+
+__pycache__/
+
+# local env files (see .env.example) and the server package's own deps
+.env
+server/node_modules/
+# engine runtime (bundled Python + taverngym). Not part of the source tree:
+# see README "引擎运行时" / CONTRIBUTING for how to provide it.
+engine/runtime/
+
+# scratch/probe screenshots and one-off scripts
+docs/screens/_*
+scripts/_probe*
+
+# python
+.venv/
+*.pyc

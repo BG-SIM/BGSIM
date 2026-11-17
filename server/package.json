@@ -1,0 +1,18 @@
+{
+  "name": "bgsim-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BGSIM multiplayer relay — matches players and orders actions. No game engine.",
+  "type": "module",
+  "main": "relay.mjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node relay.mjs",
+    "dev": "node relay.mjs --verbose"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,37 @@
+# 在 VPS 上起一个中继：docker compose up -d
+#
+# 前面套一层 Caddy/nginx 做 TLS（wss://）后，把宿主机端口改成
+#   - "127.0.0.1:8790:8790"
+# 就只让反向代理能访问它。
+services:
+  relay:
+    build: .
+    image: bgsim-relay:1
+    container_name: bgsim-relay
+    restart: unless-stopped
+    ports:
+      - "8790:8790"
+    environment:
+      PORT: 8790
+      HOST: 0.0.0.0
+      NEED: "8"            # 一桌几个真人（不满的座位由客户端侧的电脑补）
+      MAX_TURNS: "60"
+      HERO_SELECT_MS: "90000"
+      MAX_ROOMS: "200"
+      LOG_LEVEL: info
+      # RELAY_TOKEN: "换成你自己的口令"   # 只有带 ?token= 的客户端能进
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8790/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
