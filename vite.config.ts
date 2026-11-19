@@ -1,15 +1,20 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 // Engine bridge to proxy /api to. Override with BGSIM_ENGINE when running a
 // second engine instance (e.g. a throwaway test game on another port).
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
+
+// Engine bridge to proxy /api to.
 const engine = process.env.BGSIM_ENGINE || 'http://127.0.0.1:8787';
 // Net relay (scripts/relay.mjs) — the lobby/lockstep server for multiplayer.
 // Each player runs their own engine; they all meet at one relay.
 const relay = process.env.BGSIM_RELAY || 'http://127.0.0.1:8790';
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [react(), tailwindcss()],
   server: {
     port: Number(process.env.BGSIM_PORT || 5173),

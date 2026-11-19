@@ -4,6 +4,7 @@ import { cancelQueue, enqueue, resumeGame, useNet } from '../store/net';
 import type { CardRef } from '../types';
 import { HeroPortrait } from './Cards';
 import { RACE_CN, cardName, tribeIcon } from '../lib/assets';
+import { APP_VERSION } from '../lib/version';
 
 /** The tribes a lobby can be built from, plus the aberration twist. */
 const TRIBES = ['BEAST', 'DEMON', 'DRAGON', 'ELEMENTAL', 'MECHANICAL', 'MURLOC', 'NAGA', 'PIRATE', 'QUILBOAR', 'UNDEAD', 'ABERRATION'];
@@ -98,7 +99,7 @@ export function HomeScreen() {
         </div>
 
         <div className="home-meta">
-          引擎 {catalog?.engine ?? '…'} · 游戏版本 {catalog?.version ?? '…'} · 卡牌 {catalog?.cards?.length ?? 0}
+          BGSIM v{APP_VERSION} · 引擎 {catalog?.engine ?? '…'} · 游戏版本 {catalog?.version ?? '…'} · 卡牌 {catalog?.cards?.length ?? 0}
           {booting && <span className="home-meta-live"> · 正在连接…</span>}
         </div>
         {error && <div className="home-error">无法连接引擎：{error}</div>}
