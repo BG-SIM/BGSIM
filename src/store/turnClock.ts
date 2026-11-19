@@ -27,6 +27,8 @@ export const useTurnClock = create<TurnClockState>(() => ({ left: 0, limit: 0, o
 let timer: number | null = null;
 /** Turn this rope has already ended, so timeout fires once per turn. */
 let endedFor = -1;
+/** Turn whose open picker the rope has already answered. */
+let autoPickedFor = -1;
 /** Time the player could not act (combat replay, launcher screen). */
 let pausedMs = 0;
 let pausedSince: number | null = null;
@@ -40,6 +42,7 @@ function tick() {
 
   if (view.turn !== lastTurn) {
     lastTurn = view.turn;
+    autoPickedFor = -1;
     pausedMs = 0;
     pausedSince = null;
   }
@@ -94,11 +97,29 @@ function tick() {
     useTurnClock.setState({ left, limit, off: false });
   }
 
-  // Rope burnt out: end the turn for the player. An open picker would swallow
-  // the end-of-turn action, so wait until it has been answered.
+  // Rope burnt out: end the turn for the player.
   if (left > 0 || away || view.phase === 'game_over') return;
   if (endedFor === view.turn) return;
-  if (view.me.pending) return;
+
+  // An open picker (trinket / quest / discover) would swallow END: the engine
+  // refuses to finish the turn while it waits for a choice. Answer it with the
+  // first option (the affordable one for trinkets) so the rope still means
+  // something — otherwise the clock expires and nothing ever happens.
+  const pending = view.me.pending;
+  if (pending) {
+    if (autoPickedFor === view.turn) return;
+    const options = 'options' in pending ? (pending.options as Array<{ cost?: number | null }> | undefined) : undefined;
+    if (!options || options.length === 0) return;
+    autoPickedFor = view.turn;
+    let idx = 0;
+    if (pending.kind === 'trinket' && !pending.free) {
+      const affordable = options.findIndex((o) => (o.cost ?? 0) <= view.me.gold);
+      if (affordable >= 0) idx = affordable;
+    }
+    void s.choose(idx);
+    return;
+  }
+
   if (!view.legal.includes(view.actions.END)) return;
   endedFor = view.turn;
   void s.act(view.actions.END);
