@@ -4015,3 +4015,87 @@ body.is-dragging .hand-card:hover .hand-card-inner,
 }
 .hand-lock svg { width: 18px; height: 20px; }
 
+
+/* ── full-table choice layer ───────────────────────────────────────────────
+   Discover, choose-one, quest, trinket and the timewarp tavern all use the
+   same floating-card sheet: banner on top, cards over the dimmed board, a
+   lone 隐藏 pill, and an optional row of actions (leave / back). */
+.discover-row {
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 1460px;
+}
+.discover-row.many {
+  gap: 26px;
+}
+.discover-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+.discover-card.disabled:hover {
+  transform: none;
+  filter: grayscale(0.5);
+}
+.discover-actions {
+  position: absolute;
+  top: 620px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  z-index: 63;
+}
+.choice-cost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffd97a;
+}
+.choice-cost .chronum {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #b9e6ff, #4a7bd8 60%, #2b4c96);
+  box-shadow: 0 0 6px rgba(122, 178, 255, 0.65);
+}
+.choice-extra {
+  margin-top: 8px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #c8b48c;
+}
+.choice-extra .dim {
+  margin-top: 2px;
+  color: #9c8a66;
+}
+.choice-mode {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #9c8a66;
+}
+
+/* The choice row is absolutely centred: give it the full width so four cards
+   stay on one line (left:50% + shrink-to-fit used to wrap at 800px). */
+.discover-row {
+  left: 0;
+  right: 0;
+  transform: none;
+  margin: 0 auto;
+  width: auto;
+  max-width: 1460px;
+}
+.discover-row.many {
+  gap: 18px;
+}
+.discover-row.many .discover-card {
+  width: 220px;
+}
+.discover-scroll.compact {
+  min-height: 0;
+  padding: 6px 10px 10px;
+}
