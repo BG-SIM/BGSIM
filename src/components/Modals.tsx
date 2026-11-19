@@ -1,9 +1,112 @@
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../store';
-import type { Pending } from '../types';
+import type { CardRef, Item, Pending } from '../types';
 import { MinionCard, RenderCard } from './Cards';
 import { cardName, richText, plainText, textOf } from '../lib/assets';
 import { useCapability } from '../features/registry';
+
+/** One card in a full-table choice layer (discover, trinket, quest, ...). */
+interface ChoiceCard {
+  key: string;
+  art: React.ReactNode;
+  name: string;
+  text: string;
+  extra?: React.ReactNode;
+  /** Card-face art already prints name/text: keep the sheet to its extra line. */
+  compact?: boolean;
+  disabled?: boolean;
+  disabledHint?: string;
+  onPick: () => void;
+}
+
+function RichText({ text }: { text: string }) {
+  return (
+    <>
+      {richText(text).map((s, k) => (s.bold ? <b key={k}>{s.text}</b> : <span key={k}>{s.text}</span>))}
+    </>
+  );
+}
+
+/**
+ * The real table never opens a dialog for these choices: the cards float over
+ * the dimmed board under a banner, with a lone 隐藏 pill in the corner. Every
+ * pending kind that asks the player to pick something uses this same layer so
+ * the interaction reads the same whether it is a discover, a quest, a trinket
+ * or the timewarp tavern.
+ */
+function ChoiceLayer(props: {
+  title: string;
+  subtitle?: string;
+  cards: ChoiceCard[];
+  actions?: React.ReactNode;
+  hidden: boolean;
+  onToggle: () => void;
+}) {
+  const { title, subtitle, cards, actions, hidden, onToggle } = props;
+  return (
+    <div className={'discover-layer' + (hidden ? ' hidden' : '')}>
+      <div className="discover-dim" />
+      <div className="discover-banner">
+        <span>{title}</span>
+      </div>
+      {subtitle && <div className="discover-source">{subtitle}</div>}
+      <div className={'discover-row' + (cards.length > 4 ? ' many' : '')}>
+        {cards.map((c, i) => (
+          <div
+            key={c.key}
+            className={'discover-card' + (c.disabled ? ' disabled' : '')}
+            data-option={i}
+            title={c.disabled ? c.disabledHint : undefined}
+            onClick={() => {
+              if (!c.disabled) c.onPick();
+            }}
+          >
+            <div className="discover-art">{c.art}</div>
+            {(!c.compact || c.extra) && (
+              <div className={'discover-scroll' + (c.compact ? ' compact' : '')}>
+                {!c.compact && (
+                  <>
+                    <div className="discover-name">{c.name}</div>
+                    <div className="discover-text">
+                      <RichText text={c.text} />
+                    </div>
+                  </>
+                )}
+                {c.extra}
+                <span className="discover-key">{i + 1}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {actions && <div className="discover-actions">{actions}</div>}
+      <button className="discover-hide" onClick={onToggle}>
+        {hidden ? '显示' : '隐藏'}
+      </button>
+    </div>
+  );
+}
+
+function artFor(o: CardRef | Item, minionScale = 1.45) {
+  const isMinion = 'type' in o ? o.type === 'minion' : o.kind === 'minion';
+  return {
+    minion: isMinion,
+    node: isMinion ? (
+      <MinionCard card={o as never} scale={minionScale} interactive={false} />
+    ) : (
+      <RenderCard card={o as never} width={220} height={320} />
+    ),
+  };
+}
+
+/** Shared extras, styled like the small print on a discover card. */
+function CostLine({ price, icon = 'coin' }: { price: number; icon?: 'coin' | 'chronum' }) {
+  return (
+    <div className="choice-cost">
+      <span className={icon} /> {price}
+    </div>
+  );
+}
 
 export function PendingModal() {
   const view = useStore((s) => s.view)!;
@@ -21,185 +124,174 @@ export function PendingModal() {
   if (pending.kind === 'target') return null;
   if (pending.kind === 'trinket' && !trinketsOn) return null;
 
-  // Discover is not a dialog on the real table: the three cards float over the
-  // dimmed board under a charged banner, with a lone 隐藏 pill bottom-left.
+  const toggle = () => setHidden((v) => !v);
+  const back = view.me.cancellable ? (
+    <button className="btn btn-ghost" onClick={() => act(7)}>
+      返回
+    </button>
+  ) : null;
+
   if (pending.kind === 'discover') {
     return (
-      <div className={'discover-layer' + (hidden ? ' hidden' : '')}>
-        <div className="discover-dim" />
-        <div className="discover-banner">
-          <span>进行选择</span>
-        </div>
-        {pending.source && <div className="discover-source">来自：{cardName(pending.source)}</div>}
-        <div className="discover-row">
-          {pending.options.map((o, i) => (
-            <div key={o.id + i} className="discover-card" onClick={() => choose(i)} data-option={i}>
-              <div className="discover-art">
-                {o.type === 'minion' ? (
-                  <MinionCard card={o} scale={1.45} interactive={false} />
-                ) : (
-                  <RenderCard card={o} width={220} height={320} />
-                )}
-              </div>
-              <div className="discover-scroll">
-                <div className="discover-name">{cardName(o)}</div>
-                <div className="discover-text">
-                  {richText(textOf(o)).map((s, k) => (s.bold ? <b key={k}>{s.text}</b> : <span key={k}>{s.text}</span>))}
-                </div>
-                {o.attached && o.attached.length > 0 && (
-                  <div className="discover-attached">
-                    {o.attached.map((g) => (
-                      <div key={g.id}>
-                        <span className="da-name">{g.nameZh}</span>
-                        <span className="da-text">：{plainText(g.textZh || g.text)}</span>
-                      </div>
-                    ))}
+      <ChoiceLayer
+        title="进行选择"
+        subtitle={pending.source ? `来自：${cardName(pending.source)}` : undefined}
+        hidden={hidden}
+        onToggle={toggle}
+        cards={pending.options.map((o, i) => {
+          const a = artFor(o);
+          return {
+          key: o.id + i,
+          art: a.node,
+          compact: !a.minion,
+          name: cardName(o),
+          text: textOf(o),
+          extra:
+            o.attached && o.attached.length > 0 ? (
+              <div className="discover-attached">
+                {o.attached.map((g) => (
+                  <div key={g.id}>
+                    <span className="da-name">{g.nameZh}</span>
+                    <span className="da-text">：{plainText(g.textZh || g.text)}</span>
                   </div>
-                )}
-                <span className="discover-key">{i + 1}</span>
+                ))}
               </div>
-            </div>
-          ))}
-        </div>
-        <button className="discover-hide" onClick={() => setHidden(!hidden)}>
-          {hidden ? '显示' : '隐藏'}
-        </button>
-      </div>
+            ) : undefined,
+          onPick: () => choose(i),
+          };
+        })}
+      />
     );
   }
 
-  const title = (p: Pending): string => {
-    switch (p.kind) {
-      case 'discover':
-        return '发现';
-      case 'choose_one':
-        return '抉择';
-      case 'trinket':
-        return p.free ? '免费饰品' : '选择饰品';
-      case 'quest':
-        return '选择任务';
-      case 'timewarp':
-        return '时空扭曲酒馆';
-      case 'hero_power':
-        return '选择英雄技能';
-      case 'hero':
-        return '选择英雄';
-      default:
-        return '选择';
-    }
-  };
+  if (pending.kind === 'choose_one') {
+    return (
+      <ChoiceLayer
+        title="抉择"
+        subtitle={pending.source ? `来自：${cardName(pending.source)}` : undefined}
+        hidden={hidden}
+        onToggle={toggle}
+        actions={back}
+        cards={pending.options.map((o, i) => {
+          const a = artFor(o);
+          return {
+            key: o.id + i,
+            art: a.node,
+            compact: !a.minion,
+            name: cardName(o),
+            text: textOf(o),
+            extra: <div className="choice-mode">模式 {i + 1}</div>,
+            onPick: () => choose(i),
+          };
+        })}
+      />
+    );
+  }
 
-  const subtitle = (p: Pending): string => {
-    if (p.kind === 'discover' && p.source) return `来自：${cardName(p.source)}`;
-    if (p.kind === 'trinket' && p.replace) return `替换：${cardName(p.replace)}`;
-    if (p.kind === 'timewarp') return `时空币：${p.chronum}`;
-    return '';
-  };
+  if (pending.kind === 'trinket') {
+    return (
+      <ChoiceLayer
+        title={pending.free ? '免费饰品' : '选择饰品'}
+        subtitle={pending.replace ? `替换：${cardName(pending.replace)}` : undefined}
+        hidden={hidden}
+        onToggle={toggle}
+        actions={back}
+        cards={pending.options.map((o, i) => {
+          const price = pending.free ? 0 : o.cost ?? 0;
+          const disabled = !pending.free && price > gold;
+          return {
+            key: o.id + i,
+            art: <RenderCard card={o} width={220} height={320} />,
+            compact: true,
+            name: cardName(o),
+            text: textOf(o),
+            extra: pending.free ? <div className="choice-mode">免费</div> : <CostLine price={price} />,
+            disabled,
+            disabledHint: '铸币不足',
+            onPick: () => choose(i),
+          };
+        })}
+      />
+    );
+  }
 
-  return (
-    <div
-      className={'modal-backdrop' + (hidden ? ' hidden' : '')}
-      style={hidden ? ({ backdropFilter: 'none', WebkitBackdropFilter: 'none', background: 'transparent' } as React.CSSProperties) : undefined}
-    >
-      <div className={'modal pop-in' + (hidden ? ' modal-hidden' : '')} style={{ maxWidth: 980 }}>
-        <div className="modal-head">
-          <h2>{title(pending)}</h2>
-          <button className="btn modal-hide" onClick={() => setHidden(!hidden)}>
-            {hidden ? '显示' : '隐藏'}
-          </button>
-        </div>
-        <div className="modal-body" style={{ visibility: hidden ? 'hidden' : 'visible' }}>
-        <div className="sub">{subtitle(pending)}</div>
-
-        {pending.kind === 'choose_one' && (
-          <div style={{ display: 'flex', gap: 18, justifyContent: 'center' }}>
-            {pending.options.map((o, i) => (
-              <div key={i} className="panel" style={{ width: 260, padding: 16, cursor: 'pointer' }} onClick={() => choose(i)} data-option={i}>
-                <div style={{ color: '#ffe1a0', fontSize: 16, fontWeight: 700 }}>{cardName(o)}</div>
-                <div style={{ marginTop: 8, fontSize: 13, color: '#cdbb95' }}>模式 {i + 1}</div>
-                <div style={{ marginTop: 8, fontSize: 12, color: '#a48f66' }}>{textOf(o)}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {pending.kind === 'trinket' && (
-          <div style={{ display: 'flex', gap: 18, justifyContent: 'center' }}>
-            {pending.options.map((o, i) => {
-              const price = pending.free ? 0 : o.cost;
-              const disabled = !pending.free && price > gold;
-              return (
-                <div
-                  key={o.id + i}
-                  style={{ position: 'relative', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1 }}
-                  onClick={() => !disabled && choose(i)} data-option={i}
-                >
-                  <RenderCard card={o} width={168} height={255} />
-                  <div className="price-badge">
-                    <span className="coin" /> {price}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {pending.kind === 'quest' && (
-          <div style={{ display: 'flex', gap: 18, justifyContent: 'center' }}>
-            {pending.options.map((o, i) => (
-              <div key={o.id + i} style={{ cursor: 'pointer', width: 240 }} onClick={() => choose(i)} data-option={i}>
-                <RenderCard card={o} width={168} height={255} />
-                <div className="panel" style={{ marginTop: 6, padding: 8, fontSize: 11 }}>
-                  <div style={{ color: '#ffe1a0' }}>任务目标：{o.goal}</div>
-                  <div style={{ color: '#a48f66', marginTop: 4 }}>奖励：{cardName(o.reward)}</div>
-                  <div style={{ color: '#cdbb95', marginTop: 4 }}>{textOf(o.reward)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {pending.kind === 'timewarp' && (
-          <div>
-            <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {pending.options.map((o, i) => (
-                <div key={o.id + i} style={{ position: 'relative', cursor: 'pointer' }} onClick={() => choose(i)} data-option={i}>
-                  {o.type === 'minion' ? <MinionCard card={o} scale={0.95} /> : <RenderCard card={o} width={150} height={227} />}
-                  <div className="price-badge">
-                    <span className="coin" /> {o.chronumCost}
-                  </div>
-                </div>
-              ))}
+  if (pending.kind === 'quest') {
+    return (
+      <ChoiceLayer
+        title="选择任务"
+        hidden={hidden}
+        onToggle={toggle}
+        actions={back}
+        cards={pending.options.map((o, i) => ({
+          key: o.id + i,
+          art: <RenderCard card={o} width={220} height={320} />,
+          compact: true,
+          name: cardName(o),
+          text: textOf(o),
+          extra: (
+            <div className="choice-extra">
+              <div>任务目标：{o.goal}</div>
+              <div>奖励：{cardName(o.reward)}</div>
+              <div className="dim">{plainText(textOf(o.reward))}</div>
             </div>
-            <div style={{ textAlign: 'center', marginTop: 16 }}>
-              <button className="btn" onClick={() => choose(pending.leave)} data-option={pending.leave}>
-                离开时空扭曲酒馆
-              </button>
-            </div>
-          </div>
-        )}
+          ),
+          onPick: () => choose(i),
+        }))}
+      />
+    );
+  }
 
-        {pending.kind === 'hero_power' && (
-          <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-            {pending.options.map((o, i) => (
-              <div key={o.id + i} style={{ cursor: 'pointer' }} onClick={() => choose(i)} data-option={i}>
-                <RenderCard card={o} width={150} height={227} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {view.me.cancellable && (
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <button className="btn btn-ghost" onClick={() => act(7)}>
-              返回
+  if (pending.kind === 'timewarp') {
+    return (
+      <ChoiceLayer
+        title="时空扭曲酒馆"
+        subtitle={`时空币：${pending.chronum}`}
+        hidden={hidden}
+        onToggle={toggle}
+        actions={
+          <>
+            {back}
+            <button className="btn" onClick={() => choose(pending.leave)} data-option={pending.leave}>
+              离开时空扭曲酒馆
             </button>
-          </div>
-        )}
-        </div>
-      </div>
-    </div>
-  );
+          </>
+        }
+        cards={pending.options.map((o, i) => {
+          const a = artFor(o, 1.1);
+          return {
+            key: o.id + i,
+            art: a.node,
+            compact: !a.minion,
+            name: cardName(o),
+            text: textOf(o),
+            extra: <CostLine price={o.chronumCost} icon="chronum" />,
+            onPick: () => choose(i),
+          };
+        })}
+      />
+    );
+  }
+
+  if (pending.kind === 'hero_power') {
+    return (
+      <ChoiceLayer
+        title="选择英雄技能"
+        hidden={hidden}
+        onToggle={toggle}
+        actions={back}
+        cards={pending.options.map((o, i) => ({
+          key: o.id + i,
+          art: <RenderCard card={o} width={220} height={320} />,
+          compact: true,
+          name: cardName(o),
+          text: textOf(o),
+          onPick: () => choose(i),
+        }))}
+      />
+    );
+  }
+
+  return null;
 }
 
 export function Toasts() {
